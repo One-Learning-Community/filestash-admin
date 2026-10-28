@@ -12,6 +12,24 @@ Run all of these from `admin/`.
 - `npm run verify`: builds, then runs the build-output guard test.
 - `npm run build`: build only.
 - `npm run i18n`: rebuilds the English language file from the source (see Translations).
+- `npm run plugin`: builds, then packages the console as `admin/dist/admin_svelte.zip` (see Plugin).
+
+## Plugin
+
+The console also ships as a plugin for a stock Filestash (the official image or binary), with no rebuild of the server.
+
+To install:
+
+1. Copy `admin_svelte.zip` into `data/state/plugins/` (in the official image: `/app/data/state/plugins/`). Keep the file name, because the plugin finds its files by it.
+2. Restart Filestash. `/admin` now runs this console.
+
+To uninstall, delete the zip and restart. The built-in admin comes back.
+
+In Docker, put the zip inside the data volume you already mount. Don't bind-mount the zip on its own: the image refuses to start when anything under `/app` isn't owned by its `filestash` user.
+
+How it works: the zip holds the built console, its language files, and `boot.patch`. Filestash applies a plugin's patch to the matching file when it serves it. This patch puts `plugin/takeover.js` at the top of `public/assets/boot/ctrl_boot_backoffice.js`, the script the admin page loads first. The takeover swaps the built-in admin for this console and never lets the built-in admin start.
+
+The patch is made from upstream's copy of that file (`UPSTREAM`, default `origin/master`) and only depends on its first three lines, which haven't changed since August 2024. If upstream changes them, the patch stops applying and the server serves the built-in admin instead. Rebuild the plugin against the new upstream to fix it. One exception: with `DEBUG=true`, a patch that fails to apply makes the server exit.
 
 ## Build output is committed
 
