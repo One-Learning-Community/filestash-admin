@@ -15,7 +15,7 @@ export default defineConfig({
     ...(process.env.VITEST ? { conditions: ['browser'] } : {}),
   },
   build: {
-    outDir: '../public/assets/admin',
+    outDir: 'build',
     emptyOutDir: true,
     rollupOptions: {
       output: {

@@ -1,6 +1,6 @@
 // Translations for the admin console.
 //
-// Language files live in public/assets/locales/admin/<lang>.json and use the same
+// Language files live in locales/<lang>.json and use the same
 // key format as the main app's locales: the English text upper-cased, spaces as "_".
 // en.json holds every key and is built into the bundle; other languages are fetched
 // at startup. A missing key falls back to English, then to the text itself.
@@ -11,7 +11,7 @@
 // A text key never contains a dot, so the two kinds cannot collide.
 // Without an entry they are shown through format(): "access_key_id" → "Access Key Id".
 
-import en from "../../../public/assets/locales/admin/en.json"
+import en from "../../locales/en.json"
 
 type Dict = Record<string, string>
 type Vars = string | number | Record<string, string | number>
@@ -77,7 +77,7 @@ export const methodName = (m: string | null) => (m === null ? t("None") : named(
 
 const SUPPORTED = /^[a-z]{2,3}(-[A-Z]{2})?$/
 
-// locales/admin/ next to the bundle: assets/<version>/admin/index.js → assets/<version>/locales/admin/
+// In the plugin, locales/admin/ sits next to the bundle: …/admin_svelte.zip/admin/index.js → …/admin_svelte.zip/locales/admin/
 // The bundle's query string (the plugin's version) goes on each language file too.
 function locale(lang: string): string {
   const script = document.querySelector<HTMLScriptElement>('script[src*="/admin/index.js"]')

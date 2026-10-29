@@ -1,4 +1,4 @@
-// Builds public/assets/locales/admin/en.json and _.json from the admin source.
+// Builds locales/en.json and _.json from the source.
 //
 //   node scripts/i18n.mjs          rewrite both files
 //   node scripts/i18n.mjs --check  exit 1 if they are out of date
@@ -14,7 +14,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
-const dir = path.join(root, "../public/assets/locales/admin")
+const dir = path.join(root, "locales")
 
 export function toKey(text) {
   return text.toUpperCase().replace(/ /g, "_").replace(/[^a-zA-Z0-9\-_*{}?]/g, "").replace(/_+$/, "")

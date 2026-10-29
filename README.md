@@ -1,51 +1,55 @@
 # Filestash admin console
 
-Svelte 5 single-page app for the Filestash admin console. Source lives here; the build is written to `public/assets/admin/` and loaded by the Go template `public/index.backoffice.html`.
+A replacement admin console for [Filestash](https://github.com/mickael-kerjean/filestash), installed as a plugin on an unmodified server: the official Docker image or binary, no rebuild.
 
-## Commands
+- A real Save button: edits are kept until you save or discard, and leaving with unsaved changes asks first.
+- Authentication on its own page, with users of the "Local users" login method managed there.
+- Storage, workflows, activity and audit logs, and settings split into sections, each with its own address.
+- Feature switches, Google Drive and Dropbox app keys, secret key checks, and notes on settings that need a restart or that an environment variable overrides.
+- A System page: the server's health check, configuration backup and restore, and the web console.
+- Translatable.
 
-Run all of these from `admin/`.
+It uses the same admin API as the built-in console and changes nothing outside `/admin`.
 
-- `npm run dev`: Vite dev server on http://localhost:5173. It proxies API calls to a Filestash server on port 8334, so start one first with `DEBUG=true ./dist/filestash` from the repo root.
-- `npm test`: unit tests (Vitest).
-- `npm run check`: type-check (svelte-check and tsc).
-- `npm run verify`: builds, then runs the build-output guard test.
-- `npm run build`: build only.
-- `npm run i18n`: rebuilds the English language file from the source (see Translations).
-- `npm run plugin`: builds, then packages the console as `admin/dist/admin_svelte.zip` (see Plugin).
+## Install
 
-## Plugin
-
-The console also ships as a plugin for a stock Filestash (the official image or binary), with no rebuild of the server.
-
-To install:
-
-1. Copy `admin_svelte.zip` into `data/state/plugins/` (in the official image: `/app/data/state/plugins/`). Keep the file name, because the plugin finds its files by it.
-2. Restart Filestash. `/admin` now runs this console.
+1. Download `admin_svelte.zip` from [Releases](../../releases), or build it (below).
+2. Copy it into `data/state/plugins/` on your Filestash server. In the official Docker image that's `/app/data/state/plugins/`, inside the data volume. Keep the file name: the plugin finds its files by it.
+3. Restart Filestash. `/admin` now runs this console.
 
 To uninstall, delete the zip and restart. The built-in admin comes back.
 
 In Docker, put the zip inside the data volume you already mount. Don't bind-mount the zip on its own: the image refuses to start when anything under `/app` isn't owned by its `filestash` user.
 
-How it works: the zip holds the built console, its language files, and `boot.patch`. Filestash applies a plugin's patch to the matching file when it serves it. This patch puts `plugin/takeover.js` at the top of `public/assets/boot/ctrl_boot_backoffice.js`, the script the admin page loads first. The takeover swaps the built-in admin for this console and never lets the built-in admin start.
+## How it works
 
-The patch is made from upstream's copy of that file (`UPSTREAM`, default `origin/master`) and only depends on its first three lines, which haven't changed since August 2024. If upstream changes them, the patch stops applying and the server serves the built-in admin instead. Rebuild the plugin against the new upstream to fix it. One exception: with `DEBUG=true`, a patch that fails to apply makes the server exit.
+Filestash loads zip plugins from `data/state/plugins/` at startup, and a plugin can patch the server's static files as they are served. This one patches `public/assets/boot/ctrl_boot_backoffice.js`, the first script the admin page loads, to put `plugin/takeover.js` at its top. The takeover removes the built-in admin's styles and widgets, loads this console from the zip, and never lets the built-in admin start. The file browser is untouched.
 
-## Build output is committed
+The patch only depends on that file's first three lines, which haven't changed since August 2024. If Filestash changes them, the patch stops applying and the server serves its built-in admin instead, so the worst case is falling back. Rebuild the plugin against the new Filestash to fix it. One exception: a server started with `DEBUG=true` exits when a patch fails to apply.
 
-`public/assets/admin/` is committed build output. The Go binary embeds `public/`, so after any change under `admin/src` run `npm run verify` and commit the regenerated files with the source change.
+## Develop
 
-## Browser cache
+Requires Node 22 or later. Run these from the repo root.
 
-The admin HTML's ETag does not change between dev builds, so the browser may keep serving a stale page. Disable the cache in dev tools or add a query string (for example `?v=2`) when reloading.
+- `npm ci`: install.
+- `npm run dev`: dev server on http://localhost:5173. It proxies API calls to a Filestash server on port 8334, so start one first.
+- `npm test`: unit tests (Vitest).
+- `npm run check`: type-check (svelte-check and tsc).
+- `npm run build`: build the console into `build/`.
+- `npm run plugin`: build, then package `dist/admin_svelte.zip`.
+- `npm run i18n`: rebuild the English language files from the source (see Translations).
 
-## Compressed files
+The plugin's patch is made from Filestash's copy of the boot file. By default it's read from GitHub at `master`. Set `UPSTREAM` to build against another branch, tag or commit, and `FILESTASH_REPO` to read it from a local checkout instead:
 
-Go's static file server prefers a `.br` or `.gz` sibling when one exists. If you run `public/Makefile compress`, re-run it after every admin rebuild (or delete the compressed files under `public/assets/admin/`), or stale bundles will be served.
+```sh
+UPSTREAM=6feaa212 FILESTASH_REPO=../filestash npm run plugin
+```
+
+Pushing a tag that starts with `v` builds the plugin and attaches it to a GitHub release (`.github/workflows/release.yml`).
 
 ## Translations
 
-The admin's language files live in `public/assets/locales/admin/`, separate from the file browser's in `public/assets/locales/`. They use the same format: a flat JSON object whose keys are the English text upper-cased with `_` for spaces (`"DELETE_STORAGE": "Delete storage"`), and `{{VALUE}}` or `{{NAME}}` where a value is inserted.
+Language files live in `locales/` and use the main Filestash app's format: a flat JSON object whose keys are the English text upper-cased with `_` for spaces (`"DELETE_STORAGE": "Delete storage"`), and `{{VALUE}}` or `{{NAME}}` where a value is inserted.
 
 - `en.json` holds every key with its English text and is built into the bundle.
 - `_.json` is the blank template. To add a language, copy it to `<code>.json` (for example `fr.json` or `pt-BR.json`) and fill in the values. Empty values fall back to English.
@@ -56,3 +60,9 @@ In the source, fixed text goes through `t("Some text")` from `$lib/i18n`. The ar
 Names that come from the server (storage types, login methods, form fields, dropdown options, settings sections) use dotted keys: `STORAGE.S3`, `LOGIN_METHOD.LOCAL`, `FIELD.ACCESS_KEY_ID`, `OPTION.GRID`, `SECTION.GENERAL`. A text key never contains a dot, so the two can't collide. Name keys are written by hand in `en.json` (the script keeps them). A name with no entry is shown with the old admin's rule: `access_key_id` becomes "Access Key Id".
 
 Help text under form fields comes from the server plugins as HTML and is not translated here.
+
+## License
+
+[AGPL-3.0](LICENSE), like Filestash. Copyright © 2026 Dan Krieger.
+
+This project is not affiliated with Filestash or its authors.

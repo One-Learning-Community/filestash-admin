@@ -1,11 +1,11 @@
 {
-  "name": "admin",
+  "name": "filestash-admin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && rm -f ../public/assets/admin/index.html",
+    "build": "vite build && rm -f build/index.html",
     "preview": "vite preview",
     "test": "vitest run",
     "verify": "npm run build && vitest run src/build-output.test.ts",
@@ -42,5 +42,10 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "marked": "^18.1.1"
+  },
+  "license": "AGPL-3.0-only",
+  "description": "Replacement admin console for Filestash, installed as a plugin",
+  "engines": {
+    "node": ">=22"
   }
 }
