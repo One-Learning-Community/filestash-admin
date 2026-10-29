@@ -2,10 +2,12 @@
 //
 // A top-level object with fields of its own (general, email, auth) is one section.
 // A top-level object made only of sub-objects (features) is a group heading, and
-// each sub-object is a section under it. Sections with fields come first, in the
+// each sub-object is a section under it. Sub-objects of a section with fields of
+// its own (auth.gdrive) get their own sections too, grouped under that section's
+// key, when they have a field to show. Sections with fields come first, in the
 // server's order, then the groups.
 
-import { isLeaf } from "$lib/config/schema"
+import { hasVisible, isLeaf } from "$lib/config/schema"
 import type { FormElement, Schema } from "$lib/types"
 
 export type Section = {
@@ -25,6 +27,9 @@ export function settingsSections(schema: Schema): Section[] {
     const hasFields = children.some(([, n]) => isLeaf(n))
     if (hasFields || children.length === 0) {
       own.push({ slug: key, path: [key], group: null })
+      for (const [sub, n] of children) {
+        if (!isLeaf(n) && isObj(n) && hasVisible(n as Schema)) grouped.push({ slug: sub, path: [key, sub], group: key })
+      }
       continue
     }
     for (const [sub, n] of children) {
@@ -36,6 +41,11 @@ export function settingsSections(schema: Schema): Section[] {
   const count = new Map<string, number>()
   for (const s of all) count.set(s.slug, (count.get(s.slug) ?? 0) + 1)
   return all.map((s) => (count.get(s.slug)! > 1 && s.group ? { ...s, slug: `${s.group}-${s.slug}` } : s))
+}
+
+// keys of a section's sub-objects that are sections of their own
+export function subSections(sections: Section[], s: Section): string[] {
+  return sections.filter((x) => x.path.length === 2 && x.path[0] === s.path[0] && s.path.length === 1).map((x) => x.path[1])
 }
 
 export function at(root: unknown, path: string[]): unknown {

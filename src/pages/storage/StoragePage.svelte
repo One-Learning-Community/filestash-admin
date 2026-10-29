@@ -250,6 +250,10 @@
           {/key}
         {:else}
           <p class="text-muted-foreground">{t("No storage yet. Use + to add one.")}</p>
+          <p class="text-muted-foreground mt-2 text-sm">
+            {t("Or start from a preset, such as S3 or SFTP with local users.")}
+            <a class="underline" href={href("admin/setup?step=2")}>{t("Open the setup wizard")}</a>
+          </p>
         {/if}
       </div>
     </div>

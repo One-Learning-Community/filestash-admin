@@ -10,6 +10,7 @@
     { label: () => t("Workflow"), path: "admin/workflow", names: ["workflow-list", "workflow-edit", "workflow-new"] },
     { label: () => t("Activity"), path: "admin/activity", names: ["activity"] },
     { label: () => t("Settings"), path: "admin/settings", names: ["settings"] },
+    { label: () => t("System"), path: "admin/system", names: ["system"] },
   ]
 
   let version = $state("")

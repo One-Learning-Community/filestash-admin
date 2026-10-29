@@ -9,6 +9,7 @@ export type RouteName =
   | "activity"
   | "settings"
   | "about"
+  | "system"
   | "setup"
   | "home"
 
@@ -23,6 +24,7 @@ const PAGES: Record<string, RouteName> = {
   activity: "activity",
   settings: "settings",
   about: "about",
+  system: "system",
   setup: "setup",
 }
 

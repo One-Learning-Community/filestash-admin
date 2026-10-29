@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { at, enabled, settingsSections } from "./sections"
+import { at, enabled, settingsSections, subSections } from "./sections"
 
 const el = (type: string, extra: Record<string, unknown> = {}) => ({
   label: "x", type, default: null, value: null, ...extra,
@@ -18,6 +18,21 @@ describe("settingsSections", () => {
       { slug: "share", path: ["features", "share"], group: "features" },
       { slug: "search", path: ["features", "search"], group: "features" },
     ])
+  })
+
+  it("gives a section's sub-objects their own sections when they have a field to show", () => {
+    const schema = {
+      auth: { admin: el("bcrypt"), gdrive: { client_id: el("text") }, dropbox: { client_id: el("hidden") } },
+      features: { share: { enable: el("boolean") } },
+    }
+    const sections = settingsSections(schema as never)
+    expect(sections).toEqual([
+      { slug: "auth", path: ["auth"], group: null },
+      { slug: "gdrive", path: ["auth", "gdrive"], group: "auth" },
+      { slug: "share", path: ["features", "share"], group: "features" },
+    ])
+    expect(subSections(sections, sections[0])).toEqual(["gdrive"])
+    expect(subSections(sections, sections[1])).toEqual([])
   })
 
   it("prefixes a sub-section whose name another section already uses", () => {

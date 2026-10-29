@@ -23,6 +23,7 @@
   import { Button } from "$lib/components/ui/button"
   import { Skeleton } from "$lib/components/ui/skeleton"
   import { methodChangeWarning, methodVariables } from "../storage/method"
+  import LocalUsers from "./LocalUsers.svelte"
 
   const NOT_PARAMS = ["type", "banner"]
 
@@ -230,7 +231,8 @@
         </p>
       {:else if middlewares[method] && paramsByMethod[method]}
         {#key method}
-          <SchemaForm schema={middlewares[method]} bind:values={paramsByMethod[method]} hidden={["type"]} />
+          <!-- the local method's banner links to the server's own user page, which the Users list below replaces -->
+          <SchemaForm schema={middlewares[method]} bind:values={paramsByMethod[method]} hidden={method === "local" ? ["type", "banner"] : ["type"]} />
         {/key}
         <p class="text-muted-foreground text-sm">
           {t("Available to connection details:")} <code>{variables.join(" ")}</code>
@@ -245,6 +247,14 @@
         {/if}
         <a class="underline" data-link href={href("admin/storage")}>{t("Go to Storage")}</a>
       </p>
+
+      {#if method === "local"}
+        {#if savedMethod === "local"}
+          <LocalUsers />
+        {:else}
+          <p class="text-muted-foreground text-sm">{t("Save to start adding users.")}</p>
+        {/if}
+      {/if}
 
       {#if warning}
         <p role="status" class="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">{warning}</p>

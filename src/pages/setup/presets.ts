@@ -85,7 +85,7 @@ export const presetName = (p: Preset): string => NAMES[p.name]?.() ?? p.name
 // HTML for the toast: the links are hard-coded constants, never user input.
 export function presetSuccess(p: Preset): string {
   const login = '<a class="wavy" href="login">/login</a>'
-  const users = '<a class="wavy" href="admin/simple-user-management">/admin/simple-user-management</a>'
+  const users = '<a class="wavy" href="admin/authentication">/admin/authentication</a>'
   let text: string
   switch (p.name) {
     case "Local files - just for me":

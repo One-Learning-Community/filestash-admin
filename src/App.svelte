@@ -17,6 +17,7 @@
   import ActivityPage from "./pages/activity/ActivityPage.svelte"
   import SettingsPage from "./pages/settings/SettingsPage.svelte"
   import AboutPage from "./pages/about/AboutPage.svelte"
+  import SystemPage from "./pages/system/SystemPage.svelte"
   import SetupPage from "./pages/setup/SetupPage.svelte"
 
   import { getSession } from "$lib/api/endpoints"
@@ -75,6 +76,8 @@
       <ActivityPage />
     {:else if $route?.name === "settings"}
       <SettingsPage />
+    {:else if $route?.name === "system"}
+      <SystemPage />
     {:else if $route?.name === "about"}
       <AboutPage />
     {:else}

@@ -55,4 +55,35 @@ describe("saveConfig", () => {
     await expect(saveConfig((c) => c)).rejects.toMatchObject({ code: "SERVER" })
     expect(session.loginOpen).toBe(false)
   })
+
+  it("after a secret key change, logs back in and saves the login settings again", async () => {
+    const mw = { identity_provider: { type: "local", params: '{"db":"[]"}' } }
+    vi.mocked(api.getAdminConfig).mockResolvedValue({
+      general: { secret_key: leaf("aaaaaaaaaaaaaaaa") },
+      middleware: { identity_provider: { type: leaf("local"), params: leaf('{"db":"[]"}') } },
+    } as never)
+    vi.mocked(api.postConfig)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new ApiError("FORBIDDEN", "no", 401))
+      .mockResolvedValueOnce(undefined)
+    const done = saveConfig((cur) => {
+      ;(cur.values.general as Record<string, unknown>).secret_key = "bbbbbbbbbbbbbbbb"
+      return cur
+    })
+    await vi.waitFor(() => expect(session.loginOpen).toBe(true))
+    vi.mocked(api.login).mockResolvedValue(undefined)
+    await session.login("pw")
+    await done
+    expect(api.postConfig).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(api.postConfig).mock.calls[2][0]).toMatchObject({ middleware: mw })
+  })
+
+  it("saves once when the secret key doesn't change", async () => {
+    vi.mocked(api.getAdminConfig).mockResolvedValue({
+      general: { secret_key: leaf("aaaaaaaaaaaaaaaa") },
+      middleware: { identity_provider: { params: leaf('{"x":1}') } },
+    } as never)
+    await saveConfig((cur) => cur)
+    expect(api.postConfig).toHaveBeenCalledTimes(1)
+  })
 })

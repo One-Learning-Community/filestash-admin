@@ -43,7 +43,7 @@ export function coerce(el: FormElement, raw: string | boolean | null): unknown {
     const n = Number(str)
     return Number.isFinite(n) ? n : null
   }
-  if (el.type === "boolean") return Boolean(raw)
+  if (el.type === "boolean" || el.type === "enable") return Boolean(raw)
   return raw === "" ? null : raw
 }
 
@@ -53,4 +53,15 @@ export function omit(values: Values, keys: string[]): Values {
 
 export function pick(values: Values, keys: string[]): Values {
   return Object.fromEntries(Object.entries(values).filter(([k]) => keys.includes(k)))
+}
+
+// A switch's state: its value, or its default while it has none.
+export function isOn(el: FormElement, value: unknown): boolean {
+  const v = value === null || value === undefined ? el.default : value
+  return v === true || v === "true"
+}
+
+// True when a section has at least one field that is shown.
+export function hasVisible(node: Schema): boolean {
+  return Object.values(node).some((n) => (isLeaf(n) ? n.type !== "hidden" : isObject(n) && hasVisible(n as Schema)))
 }

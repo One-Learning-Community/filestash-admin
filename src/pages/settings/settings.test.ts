@@ -87,7 +87,7 @@ describe("settings page", () => {
     render(SettingsPage)
     const nav = await screen.findByRole("navigation", { name: "Settings sections" })
     const links = [...nav.querySelectorAll("a")].map((a) => a.querySelector("span")?.textContent)
-    expect(links).toEqual(["General", "Email", "Admin password", "Share", "Search"])
+    expect(links).toEqual(["General", "Email", "Admin password", "Share", "Search", "Google Drive", "Dropbox"])
     expect(await screen.findByLabelText("Name")).toBeTruthy()
     expect(screen.queryByLabelText("Server")).toBeNull()
     expect(nav.querySelector('a[href="/admin/settings/share"]')?.textContent).toContain("On")
@@ -125,5 +125,41 @@ describe("settings page", () => {
     await waitFor(() => expect(api.postConfig).toHaveBeenCalled())
     expect(posted().general.name).toBe("Renamed")
     expect(posted().email.server).toBe("smtp.example.com")
+  })
+
+  it("doesn't save empty storage app keys, and saves filled ones", async () => {
+    vi.mocked(api.getAdminConfig).mockResolvedValue(config() as never)
+    vi.mocked(api.getPublicConfig).mockResolvedValue({ connections: [], auth: [] })
+    await navigate("admin/settings/gdrive", { replace: true })
+    render(SettingsPage)
+    await fireEvent.input(await screen.findByLabelText("Client ID"), { target: { value: "id-1" } })
+    await fireEvent.click(await screen.findByRole("button", { name: "Save" }))
+    await waitFor(() => expect(api.postConfig).toHaveBeenCalled())
+    expect(posted().auth.gdrive).toEqual({ client_id: "id-1", client_secret: null })
+    expect(posted().auth).not.toHaveProperty("dropbox")
+  })
+
+  it("won't save a secret key in the wrong format", async () => {
+    const c = config() as Record<string, any>
+    c.general.secret_key = el("password", "secret_key", { value: "abcdABCD12345678", required: true, pattern: "[a-zA-Z0-9]{16}" })
+    vi.mocked(api.getAdminConfig).mockResolvedValue(c as never)
+    render(SettingsPage)
+    const field = await screen.findByLabelText("Secret Key")
+    await fireEvent.input(field, { target: { value: "short" } })
+    expect(await screen.findByRole("alert")).toHaveTextContent("Must be exactly 16 letters or digits")
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled()
+  })
+
+  it("asks before changing the secret key", async () => {
+    const c = config() as Record<string, any>
+    c.general.secret_key = el("password", "secret_key", { value: "abcdABCD12345678", required: true, pattern: "[a-zA-Z0-9]{16}" })
+    vi.mocked(api.getAdminConfig).mockResolvedValue(c as never)
+    render(SettingsPage)
+    await fireEvent.click(await screen.findByRole("button", { name: "Generate" }))
+    await fireEvent.click(screen.getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(confirmState.current?.title).toBe("Change the secret key?"))
+    confirmState.current?.resolve(false)
+    confirmState.current = null
+    expect(api.postConfig).not.toHaveBeenCalled()
   })
 })

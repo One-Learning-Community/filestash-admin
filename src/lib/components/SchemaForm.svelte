@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { isLeaf } from "$lib/config/schema"
+  import { hasVisible, isLeaf, isOn } from "$lib/config/schema"
+  import { NOTES } from "$lib/config/fields"
   import type { FormElement, Schema } from "$lib/types"
-  import * as Collapsible from "$lib/components/ui/collapsible"
-  import { Button } from "$lib/components/ui/button"
   import SchemaField from "./SchemaField.svelte"
   import SchemaForm from "./SchemaForm.svelte"
   import Help from "./Help.svelte"
-  import { fieldLabel, sectionLabel } from "$lib/i18n"
+  import { sectionLabel } from "$lib/i18n"
 
   let { schema, values = $bindable({}), prefix = "", hidden = [] }: {
     schema: Schema
@@ -29,16 +28,16 @@
     return b ? (b[1] as FormElement).description : undefined
   })
 
-  // leaves that an enable element in the same object controls
+  // leaves that a switch in the same object shows only while it is on
   const targeted = $derived(
     new Set(
       entries.flatMap(([, node]) => (isLeaf(node) && node.type === "enable" ? (node.target ?? []) : [])),
     ),
   )
-  let open = $state<Record<string, boolean>>({})
   const isTargeted = (node: FormElement) => node.id !== undefined && targeted.has(node.id)
   const targetsOf = (el: FormElement) =>
     entries.filter(([, n]) => isLeaf(n) && n.id !== undefined && (el.target ?? []).includes(n.id)) as [string, FormElement][]
+  const note = (key: string) => NOTES[prefix + key]?.()
 </script>
 
 <div class="space-y-4">
@@ -48,24 +47,16 @@
       {#if key === "banner"}
         <!-- rendered above -->
       {:else if node.type === "enable"}
-        <Collapsible.Root class="space-y-4" bind:open={() => open[key] ?? false, (v) => (open[key] = v)}>
-          <Collapsible.Trigger>
-            {#snippet child({ props })}
-              <Button {...props} variant="ghost" size="sm" type="button">{node.placeholder || fieldLabel(node.label)}</Button>
-            {/snippet}
-          </Collapsible.Trigger>
-          <Collapsible.Content class="space-y-4">
-            {#if open[key]}
-              {#each targetsOf(node) as [tkey, tnode] (tkey)}
-                <SchemaField el={tnode} name={prefix + tkey} bind:value={values[tkey]} />
-              {/each}
-            {/if}
-          </Collapsible.Content>
-        </Collapsible.Root>
+        <SchemaField el={node} name={prefix + key} bind:value={values[key]} note={note(key)} />
+        {#if isOn(node, values[key])}
+          {#each targetsOf(node) as [tkey, tnode] (tkey)}
+            <SchemaField el={tnode} name={prefix + tkey} bind:value={values[tkey]} note={note(tkey)} />
+          {/each}
+        {/if}
       {:else if !isTargeted(node)}
-        <SchemaField el={node} name={prefix + key} bind:value={values[key]} />
+        <SchemaField el={node} name={prefix + key} bind:value={values[key]} note={note(key)} />
       {/if}
-    {:else}
+    {:else if hasVisible(node)}
       <section class="space-y-4">
         <h3 class="text-base font-medium">{sectionLabel(key)}</h3>
         <SchemaForm schema={node} bind:values={values[key]} prefix={prefix + key + "."} />

@@ -38,3 +38,30 @@ export async function getRelease(): Promise<{ html: string; version: string }> {
   const version = /^Filestash\/([v.0-9]*)/.exec(res.headers.get('X-Powered-By') ?? '')?.[1] ?? ''
   return { html: doc.querySelector('table')?.outerHTML ?? '', version }
 }
+
+// Users of the "Local users" login method. The server answers in JSON only when
+// asked for it, and reads new and changed users from a form.
+export type LocalUser = { email: string; password: string; role?: string; disabled?: boolean; mfa?: string }
+const USERS = 'admin/api/simple-user-management'
+const asJson = { headers: { Accept: 'application/json' } }
+export const getLocalUsers = () => request<LocalUser[] | null>('GET', USERS, undefined, asJson)
+export const saveLocalUser = (u: { email: string; password: string; role: string; disabled: boolean }) =>
+  request<void>(
+    'POST',
+    USERS,
+    { email: u.email, password: u.password, role: u.role, ...(u.disabled ? { disabled: 'on' } : {}) },
+    { ...asJson, form: true },
+  )
+export const deleteLocalUser = (email: string) =>
+  request<void>('DELETE', `${USERS}?email=${encodeURIComponent(email)}`, undefined, asJson)
+
+// The server's own health check: config readable, server answering, secret key and admin password sane.
+export type Health = { status: string; reason?: string; debug?: string[] }
+export async function getHealth(): Promise<Health> {
+  const res = await fetch(apiUrl('healthz'), { credentials: 'same-origin' })
+  try {
+    return (await res.json()) as Health
+  } catch {
+    return { status: 'error', reason: `HTTP ${res.status}` }
+  }
+}

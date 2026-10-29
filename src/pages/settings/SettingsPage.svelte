@@ -7,7 +7,10 @@
   import { omit, pick, toValues, type Schema } from "$lib/config/schema"
   import { createDraft, equal } from "$lib/draft.svelte"
   import { href, navigate, route } from "$lib/router"
-  import { at, enabled, settingsSections, type Section } from "./sections"
+  import { at, enabled, settingsSections, subSections, type Section } from "./sections"
+  import { withAppKeys, withoutEmptyAppKeys } from "$lib/config/appkeys"
+  import { formErrors } from "$lib/config/fields"
+  import { confirm } from "$lib/confirm.svelte"
   import SaveBar from "$lib/components/SaveBar.svelte"
   import SchemaForm from "$lib/components/SchemaForm.svelte"
   import { Skeleton } from "$lib/components/ui/skeleton"
@@ -34,6 +37,12 @@
 
   // "auth" only holds the admin password now that sign-in has its own page
   const title = (s: Section) => (s.path.join(".") === "auth" ? t("Admin password") : sectionLabel(s.path[s.path.length - 1]))
+  const groupTitle = (g: string) => (g === "auth" ? t("Storage app keys") : sectionLabel(g))
+  // the first problem blocks saving; the count says if there are more
+  const errors = $derived(schema ? formErrors(schema, draft.value) : [])
+  const error = $derived(
+    errors.length === 0 ? "" : errors.length === 1 ? errors[0] : t("{{FIRST}} (and {{COUNT}} more)", { FIRST: errors[0], COUNT: errors.length - 1 }),
+  )
   const sectionDirty = (s: Section) => !equal($state.snapshot(at(draft.value, s.path)), at(draft.baseline, s.path))
   const status = (s: Section) => enabled(at(schema, s.path), at(draft.value, s.path))
   const groups = $derived.by(() => {
@@ -52,7 +61,7 @@
   async function load() {
     try {
       const admin = await getAdminConfig()
-      const shown = omit(admin as Record<string, unknown>, NOT_HERE) as Schema
+      const shown = withAppKeys(omit(admin as Record<string, unknown>, NOT_HERE) as Schema)
       schema = shown
       const initial = toValues(shown)
       loadedHash = (initial.auth as Record<string, unknown> | undefined)?.admin
@@ -68,12 +77,24 @@
   const adminHash = (v: Record<string, any>) => v.auth?.admin
   const untouched = (h: unknown) => h === loadedHash || h === null || h === undefined || h === ""
 
+  const secretOf = (v: Record<string, any>) => v.general?.secret_key ?? null
+
   async function save() {
+    if (secretOf(draft.value) !== secretOf(draft.baseline)) {
+      const ok = await confirm({
+        title: t("Change the secret key?"),
+        body: t("Everyone is signed out, you included, and existing shared links stop working. After saving, log in again so the console can re-save the login method settings under the new key."),
+        confirmLabel: t("Change the key"),
+        destructive: true,
+      })
+      if (!ok) return
+    }
     saving = true
     await draft.save(async (v) => {
       try {
         await saveConfig(({ values, connections }) => {
           const owned = pick(v, ownedKeys)
+          if (owned.auth) owned.auth = withoutEmptyAppKeys(owned.auth as Record<string, unknown>)
           if (owned.auth && untouched(adminHash(v))) {
             const fresh = (values.auth as Record<string, unknown> | undefined)?.admin
             owned.auth = { ...(owned.auth as object), admin: fresh }
@@ -112,7 +133,7 @@
               <option value={s.slug}>{title(s)}{sectionDirty(s) ? " •" : ""}</option>
             {/each}
           {:else}
-            <optgroup label={sectionLabel(g.group)}>
+            <optgroup label={groupTitle(g.group)}>
               {#each g.items as s (s.slug)}
                 <option value={s.slug}>{title(s)}{sectionDirty(s) ? " •" : ""}</option>
               {/each}
@@ -125,7 +146,7 @@
     <nav class="hidden w-52 shrink-0 md:block" aria-label={t("Settings sections")}>
       {#each groups as g (g.group ?? "")}
         {#if g.group !== null}
-          <div class="text-muted-foreground mt-4 mb-1 px-3 text-xs font-medium tracking-wide uppercase">{sectionLabel(g.group)}</div>
+          <div class="text-muted-foreground mt-4 mb-1 px-3 text-xs font-medium tracking-wide uppercase">{groupTitle(g.group)}</div>
         {/if}
         <ul class="space-y-0.5">
           {#each g.items as s (s.slug)}
@@ -158,7 +179,7 @@
         {#key current.slug}
           {#if current.path.length === 1}
             {@const [a] = current.path}
-            <SchemaForm schema={schema[a] as Schema} bind:values={draft.value[a]} prefix={a + "."} />
+            <SchemaForm schema={schema[a] as Schema} bind:values={draft.value[a]} prefix={a + "."} hidden={subSections(sections, current)} />
           {:else}
             {@const [a, b] = current.path}
             <SchemaForm schema={(schema[a] as Schema)[b] as Schema} bind:values={draft.value[a][b]} prefix={a + "." + b + "."} />
@@ -167,7 +188,7 @@
       {/if}
     </div>
   </div>
-  <SaveBar dirty={draft.dirty} {saving} onSave={save} onDiscard={() => draft.reset()} />
+  <SaveBar dirty={draft.dirty} {saving} {error} onSave={save} onDiscard={() => draft.reset()} />
 {:else}
   <Skeleton class="h-40 w-full" />
 {/if}

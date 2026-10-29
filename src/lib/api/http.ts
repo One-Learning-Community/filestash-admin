@@ -20,11 +20,21 @@ export function apiUrl(path: string): string {
 
 type Method = 'GET' | 'POST' | 'DELETE'
 
+export type SendOptions = {
+  /** send the body as a form (application/x-www-form-urlencoded) instead of JSON */
+  form?: boolean
+  /** extra request headers */
+  headers?: Record<string, string>
+}
+
 /** Performs the fetch and returns the Response; throws ApiError for transport and HTTP-level failures. */
-export async function send(method: Method, path: string, body?: unknown): Promise<Response> {
-  const headers: Record<string, string> = { 'X-Requested-With': 'XmlHttpRequest' }
+export async function send(method: Method, path: string, body?: unknown, opts: SendOptions = {}): Promise<Response> {
+  const headers: Record<string, string> = { 'X-Requested-With': 'XmlHttpRequest', ...opts.headers }
   const init: RequestInit = { method, headers, credentials: 'same-origin' }
-  if (body !== undefined) {
+  if (body !== undefined && opts.form) {
+    headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    init.body = new URLSearchParams(body as Record<string, string>).toString()
+  } else if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(body)
   }
@@ -55,18 +65,19 @@ export async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
-  opts: { text?: boolean } = {},
+  opts: { text?: boolean } & SendOptions = {},
 ): Promise<T> {
-  const res = await send(method, path, body)
+  const res = await send(method, path, body, opts)
   if (opts.text) return (await res.text()) as T
   const text = await res.text()
-  let json: { status?: string; result?: T; message?: string }
+  let json: { status?: string; result?: T; results?: T; message?: string }
   try {
     json = JSON.parse(text)
   } catch {
     throw new ApiError('OTHER', t('Invalid response'), res.status)
   }
-  if (json.status === 'ok') return json.result as T
+  // single values come back as "result", lists as "results"
+  if (json.status === 'ok') return (json.result ?? json.results) as T
   const message = json.message ?? t('Unknown error')
   throw new ApiError(message === 'Not Allowed' ? 'NOT_ALLOWED' : 'OTHER', message, res.status)
 }

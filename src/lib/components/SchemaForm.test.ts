@@ -17,11 +17,38 @@ const sftp: Schema = {
 describe("SchemaForm", () => {
   afterEach(cleanup)
 
-  it("hides enable targets until toggled", async () => {
+  it("an enable field is a switch that saves its value and shows its targets while on", async () => {
     render(Harness, { schema: sftp, values: { hostname: "h", advanced: false, port: 22 } })
     expect(screen.queryByLabelText("Port")).toBeNull()
-    await fireEvent.click(screen.getByRole("button", { name: "Advanced" }))
+    await fireEvent.click(screen.getByRole("switch", { name: "Advanced" }))
     expect(screen.getByLabelText("Port")).toBeVisible()
+    expect(JSON.parse(screen.getByTestId("out").textContent!)).toMatchObject({ advanced: true })
+  })
+
+  it("an enable field with no value follows its default", () => {
+    render(Harness, { schema: { enable: el("enable", "Enable", { default: true }) }, values: { enable: null } })
+    expect(screen.getByRole("switch", { name: "Enable" })).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("skips sub-sections with nothing to show", () => {
+    render(Harness, { schema: { gdrive: { client_id: el("hidden", "client_id") } }, values: {} })
+    expect(screen.queryByRole("heading")).toBeNull()
+  })
+
+  it("shows a read-only image as an image", () => {
+    render(Harness, { schema: { image: el("image", "image", { readonly: true, value: "data:image/svg+xml;base64,AA==" }) }, values: {} })
+    expect(screen.getByRole("img")).toHaveAttribute("src", "data:image/svg+xml;base64,AA==")
+  })
+
+  it("suggests the remaining values of a multi-value field", async () => {
+    render(Harness, { schema: { roles: el("text", "Roles", { multi: true, datalist: ["a", "b", "c"] }) }, values: { roles: "a" } })
+    const options = [...document.querySelectorAll("datalist option")].map((o) => (o as HTMLOptionElement).value)
+    expect(options).toEqual(["a, b", "a, c"])
+  })
+
+  it("adds a note for a known field path", () => {
+    render(Harness, { schema: { port: el("number", "Port") }, values: {}, prefix: "general." })
+    expect(screen.getByText("Takes effect after a restart.")).toBeTruthy()
   })
 
   it("number empty binds null", async () => {
