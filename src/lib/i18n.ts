@@ -78,9 +78,12 @@ export const methodName = (m: string | null) => (m === null ? t("None") : named(
 const SUPPORTED = /^[a-z]{2,3}(-[A-Z]{2})?$/
 
 // locales/admin/ next to the bundle: assets/<version>/admin/index.js → assets/<version>/locales/admin/
-function localeDir(): string {
+// The bundle's query string (the plugin's version) goes on each language file too.
+function locale(lang: string): string {
   const script = document.querySelector<HTMLScriptElement>('script[src*="/admin/index.js"]')
-  return new URL("../locales/admin/", script?.src || document.baseURI).href
+  const url = new URL(`../locales/admin/${lang}.json`, script?.src || document.baseURI)
+  if (script?.src) url.search = new URL(script.src).search
+  return url.href
 }
 
 // The browser's language, then its base language; English needs no fetch.
@@ -94,7 +97,7 @@ export async function loadLanguage(
   const tries = [...new Set([language, base])].filter((l) => SUPPORTED.test(l))
   for (const l of tries) {
     try {
-      const res = await fetcher(`${localeDir()}${l}.json`)
+      const res = await fetcher(locale(l))
       if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) continue
       const data = await res.json()
       if (data && typeof data === "object") {

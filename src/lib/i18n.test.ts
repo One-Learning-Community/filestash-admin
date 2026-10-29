@@ -66,4 +66,14 @@ describe("i18n", () => {
   it("en.json and _.json match the source (run npm run i18n)", () => {
     expect(() => execFileSync("node", ["scripts/i18n.mjs", "--check"], { stdio: "pipe" })).not.toThrow()
   })
+
+  it("language files carry the bundle's version", async () => {
+    const script = document.createElement("script")
+    script.src = "http://localhost/assets/abc/plugin/admin_svelte.zip/admin/index.js?v=123"
+    document.body.appendChild(script)
+    const fetcher = vi.fn(async () => json(null, false))
+    await loadLanguage("de", fetcher)
+    script.remove()
+    expect(fetcher.mock.calls[0]).toEqual(["http://localhost/assets/abc/plugin/admin_svelte.zip/locales/admin/de.json?v=123"])
+  })
 })

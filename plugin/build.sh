@@ -17,6 +17,11 @@ OUT="$ROOT/admin/dist/admin_svelte.zip"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 
 ORIGINAL="$(git -C "$ROOT" show "$UPSTREAM:$TARGET")"
+VERSION="$(git -C "$ROOT" rev-parse --short HEAD)"
+git -C "$ROOT" diff --quiet HEAD -- admin public/assets/admin public/assets/locales/admin || VERSION="$VERSION-dirty"
+# goes on the end of the console's file addresses, so browsers fetch them again
+# whenever they change (the server caches plugin files for 30 days)
+BUST="$(cat "$ROOT"/public/assets/admin/index.* "$ROOT"/public/assets/locales/admin/*.json | shasum | cut -c1-12)"
 
 # the patch, in git's diff format: upstream's file -> takeover.js + upstream's file
 git -C "$W" init -q p
@@ -24,7 +29,7 @@ mkdir -p "$W/p/$(dirname "$TARGET")"
 printf '%s\n' "$ORIGINAL" > "$W/p/$TARGET"
 git -C "$W/p" add -A
 git -C "$W/p" -c user.name=build -c user.email=build@localhost commit -qm upstream
-{ cat "$HERE/takeover.js"; echo; echo "// ---- the built-in admin's boot code, never reached ----"; printf '%s\n' "$ORIGINAL"; } > "$W/p/$TARGET"
+{ sed "s/^const VERSION = \"dev\";/const VERSION = \"$BUST\";/" "$HERE/takeover.js"; echo; echo "// ---- the built-in admin's boot code, never reached ----"; printf '%s\n' "$ORIGINAL"; } > "$W/p/$TARGET"
 mkdir -p "$W/zip"
 git -C "$W/p" diff > "$W/zip/boot.patch"
 
@@ -34,8 +39,6 @@ cp -R "$ROOT/public/assets/locales/admin" "$W/zip/locales/admin"
 # the server prefers .br/.gz siblings only for its own files; keep the zip lean
 find "$W/zip" \( -name '*.br' -o -name '*.gz' \) -delete
 
-VERSION="$(git -C "$ROOT" rev-parse --short HEAD)"
-git -C "$ROOT" diff --quiet HEAD -- admin public/assets/admin public/assets/locales/admin || VERSION="$VERSION-dirty"
 cat > "$W/zip/manifest.json" <<JSON
 {
   "author": "admin_svelte",

@@ -1,6 +1,10 @@
 // Replaced by the admin_svelte plugin: starts the Svelte admin console in place
 // of the built-in one. Remove the plugin to get the built-in admin back.
 const PLUGIN = "admin_svelte";
+// set by build.sh to a hash of the console's files. The server caches plugin files
+// for 30 days under an address that only changes with the server's version, so the
+// hash goes on the end of each address and a new console is fetched straight away.
+const VERSION = "dev";
 const ref = (import.meta.url.match(/\/assets\/([^/]+)\/boot\//) || [])[1];
 const root = new URL(`assets/${ref}/plugin/${PLUGIN}.zip/`, document.baseURI);
 
@@ -15,13 +19,13 @@ document.getElementById("app").replaceWith($app);
 
 const $css = document.createElement("link");
 $css.rel = "stylesheet";
-$css.href = new URL("admin/index.css", root).href;
+$css.href = new URL(`admin/index.css?v=${VERSION}`, root).href;
 document.head.appendChild($css);
 
 // a script tag, not import(): the console finds its language files next to this src
 const $js = document.createElement("script");
 $js.type = "module";
-$js.src = new URL("admin/index.js", root).href;
+$js.src = new URL(`admin/index.js?v=${VERSION}`, root).href;
 document.body.appendChild($js);
 
 // never resolve, so the built-in admin's router never starts
