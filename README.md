@@ -63,6 +63,6 @@ Help text under form fields comes from the server plugins as HTML and is not tra
 
 ## License
 
-[AGPL-3.0](LICENSE), like Filestash. Copyright © 2026 Dan Krieger.
+[AGPL-3.0](LICENSE), like Filestash. Copyright © 2026 One Learning Community.
 
 This project is not affiliated with Filestash or its authors.
