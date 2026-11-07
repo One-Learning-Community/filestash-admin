@@ -65,7 +65,7 @@ describe("htpasswd users", () => {
     expect(dialog.getByText("A name can't contain \":\".")).toBeInTheDocument()
     expect(dialog.getByRole("button", { name: "Add" })).toBeDisabled()
     await fireEvent.input(name, { target: { value: "Ann" } })
-    expect(dialog.getByText(/this is a different user from ann/)).toBeInTheDocument()
+    expect(dialog.getByText("Names are case-sensitive: this is a new user.")).toBeInTheDocument()
     expect(dialog.getByRole("button", { name: "Add" })).toBeEnabled()
   })
 

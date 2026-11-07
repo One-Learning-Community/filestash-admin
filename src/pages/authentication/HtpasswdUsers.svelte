@@ -95,7 +95,7 @@
 
   {#if unsaved}
     <p role="status" class="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
-      {t("These user changes aren't applied yet. Click Save to apply them.")}
+      {t("These user changes aren't applied yet. Save the page to apply them.")}
     </p>
   {/if}
 
@@ -131,12 +131,14 @@
         <Label for="htpasswd-password">{t("Password")}</Label>
         <Input id="htpasswd-password" type="password" autocomplete="new-password" bind:value={password} />
       </div>
-      {#if similar}
-        <p role="status" class="text-sm">{t("Names are case-sensitive: this is a different user from {{VALUE}}.", similar)}</p>
-      {/if}
-      {#if problem && (name !== "" || password !== "")}
-        <p class="text-destructive text-sm">{problem}</p>
-      {/if}
+      <!-- space is kept for one line, so the dialog doesn't jump when a message appears -->
+      <div class="min-h-5 text-sm" aria-live="polite">
+        {#if problem && (name !== "" || password !== "")}
+          <p class="text-destructive">{problem}</p>
+        {:else if similar}
+          <p>{t("Names are case-sensitive: this is a new user.")}</p>
+        {/if}
+      </div>
       <Dialog.Footer>
         <Button type="button" variant="outline" onclick={requestClose}>{t("Cancel")}</Button>
         <Button type="submit" disabled={problem !== "" || busy}>{busy ? t("Hashing…") : editing === null ? t("Add") : t("Set password")}</Button>
