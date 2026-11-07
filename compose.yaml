@@ -1,0 +1,38 @@
+# A stock Filestash for developing and testing the console. Not for production.
+#
+#   npm run stack:up       start it on http://localhost:18334
+#   npm run stack:dev      the console with live reload on http://localhost:5173,
+#                          talking to this server
+#   npm run stack:plugin   build the plugin, install it here and restart, so
+#                          http://localhost:18334/admin runs it as a real install would
+#   npm run stack:reset    delete the server and everything it stored
+#
+# It uses port 18334, not Filestash's usual 8334, so it can run next to another
+# Filestash. Set FILESTASH_PORT to change it.
+#
+# The admin password is "admin".
+name: filestash-admin-dev
+
+services:
+  filestash:
+    image: ${FILESTASH_IMAGE:-machines/filestash:latest}
+    ports:
+      - "${FILESTASH_PORT:-18334}:8334"
+    environment:
+      # bcrypt of "admin", applied at every start; "$" is doubled for Compose
+      ADMIN_PASSWORD: "$$2a$$10$$oHDAAwyXY3XGoDD7uhRNSO7Ye5NxzPZQk8OoZzi1pLoF6ePgll8QK"
+    volumes:
+      # a named volume, not a host folder: the image won't start when anything
+      # under /app isn't owned by its filestash user
+      - state:/app/data/state
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8334/healthz"]
+      # checked every second while starting, then rarely, to keep the logs readable
+      start_period: 60s
+      start_interval: 1s
+      interval: 60s
+      timeout: 2s
+      retries: 3
+
+volumes:
+  state: {}

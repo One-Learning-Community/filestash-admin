@@ -39,6 +39,16 @@ Requires Node 22 or later. Run these from the repo root.
 - `npm run plugin`: build, then package `dist/admin_svelte.zip`.
 - `npm run i18n`: rebuild the English language files from the source (see Translations).
 
+### Local server with Docker Compose
+
+`compose.yaml` runs a stock Filestash (`machines/filestash:latest`) on http://localhost:18334, with admin password `admin`. It uses port 18334 so it can run next to another Filestash; set `FILESTASH_PORT` to change it.
+
+- `npm run stack:up`: start it.
+- `npm run stack:dev`: dev server on http://localhost:5173, talking to it.
+- `npm run stack:plugin`: build the plugin, install it there and restart, so http://localhost:18334/admin runs it as a real install would.
+- `npm run stack:logs`, `npm run stack:down`: follow its logs, stop it.
+- `npm run stack:reset`: stop it and delete everything it stored.
+
 The plugin's patch is made from Filestash's copy of the boot file. By default it's read from GitHub at `master`. Set `UPSTREAM` to build against another branch, tag or commit, and `FILESTASH_REPO` to read it from a local checkout instead:
 
 ```sh

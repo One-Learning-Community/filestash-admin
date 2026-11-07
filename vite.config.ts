@@ -31,7 +31,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '^/(admin/api|api|about)': 'http://localhost:8334',
+      // FILESTASH_URL points it elsewhere, e.g. at the server from compose.yaml
+      '^/(admin/api|api|about)': process.env.FILESTASH_URL ?? 'http://localhost:8334',
     },
   },
   test: {
