@@ -81,6 +81,15 @@ async function answer(label: string) {
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
 }
 
+// adds a user through the htpasswd users list
+async function addHtUser(name: string, password: string) {
+  await fireEvent.click(screen.getByRole("button", { name: "Add user" }))
+  await fireEvent.input(screen.getByLabelText("Name or email"), { target: { value: name } })
+  await fireEvent.input(screen.getByLabelText("Password"), { target: { value: password } })
+  await fireEvent.click(screen.getByRole("button", { name: "Add" }))
+  await screen.findByText(name)
+}
+
 describe("authentication page", () => {
   beforeEach(() => vi.clearAllMocks())
   afterEach(() => {
@@ -91,12 +100,12 @@ describe("authentication page", () => {
   it("switching methods keeps typed values", async () => {
     setup(both)
     const group = await ready()
-    await fireEvent.input(screen.getByLabelText(/users/i), { target: { value: "bob:hash" } })
+    await addHtUser("bob", "pw")
     await fireEvent.click(group.getByRole("button", { name: "LDAP" }))
-    expect(screen.queryByLabelText(/users/i)).toBeNull()
+    expect(screen.queryByText("bob")).toBeNull()
     await fireEvent.input(screen.getByLabelText(/hostname/i), { target: { value: "ldap.local" } })
     await fireEvent.click(group.getByRole("button", { name: "htpasswd" }))
-    expect(screen.getByLabelText(/users/i)).toHaveValue("bob:hash")
+    expect(screen.getByText("bob")).toBeInTheDocument()
     await fireEvent.click(group.getByRole("button", { name: "LDAP" }))
     expect(screen.getByLabelText(/hostname/i)).toHaveValue("ldap.local")
   })
@@ -119,7 +128,7 @@ describe("authentication page", () => {
     setup(both)
     await ready()
     expect(screen.queryByText("Unsaved changes")).toBeNull()
-    await fireEvent.input(screen.getByLabelText(/users/i), { target: { value: "x" } })
+    await addHtUser("x", "pw")
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument()
     expect(api.postConfig).not.toHaveBeenCalled()
   })
@@ -166,11 +175,20 @@ describe("authentication page", () => {
   it("a param edit with nothing affected saves without asking", async () => {
     setup(both)
     await ready()
-    await fireEvent.input(screen.getByLabelText(/users/i), { target: { value: "bob:hash" } })
+    const notice = /These user changes aren't applied yet/
+    expect(screen.queryByText(notice)).toBeNull()
+    await addHtUser("bob", "pw")
+    expect(screen.getByText(notice)).toBeInTheDocument()
+    // the reload after saving returns what was posted
+    vi.mocked(api.postConfig).mockImplementation(async (body: any) => {
+      vi.mocked(api.getAdminConfig).mockResolvedValue(adminConfig("htpasswd", "s3", "{}", body.middleware.identity_provider.params) as never)
+    })
     await fireEvent.click(saveButton("Save"))
     await waitFor(() => expect(api.postConfig).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByText(notice)).toBeNull())
+    expect(screen.getByText("bob")).toBeInTheDocument()
     expect(screen.queryByRole("alertdialog")).toBeNull()
-    expect(JSON.parse(posted().middleware.identity_provider.params)).toEqual({ users: "bob:hash" })
+    expect(JSON.parse(posted().middleware.identity_provider.params).users).toMatch(/^bob:\$2a\$10\$.{53}$/)
   })
 
   it("Discard asks first, then restores the saved method", async () => {
@@ -235,14 +253,16 @@ describe("authentication page", () => {
     await ready()
     // the server changes after the page loads (plugins rewrite these params at runtime)
     vi.mocked(api.getAdminConfig).mockResolvedValue(adminConfig("htpasswd", "s3", "{}", atSave) as never)
-    const users = screen.getByLabelText(/users/i)
-    expect(users).toHaveValue("alice:h1")
-    await fireEvent.input(users, { target: { value: "alice:h2" } })
+    expect(screen.getByText("alice")).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole("button", { name: "Delete alice" }))
+    await answer("Delete")
+    await addHtUser("ann", "pw")
     await fireEvent.click(saveButton("Save"))
     await waitFor(() => expect(api.postConfig).toHaveBeenCalledTimes(1))
     const idp = posted().middleware.identity_provider
     expect(idp.type).toBe("htpasswd")
-    expect(JSON.parse(idp.params)).toEqual({ users: "alice:h2", mfa: "bob,carol", added: "x" })
+    const params = JSON.parse(idp.params)
+    expect(params).toEqual({ users: expect.stringMatching(/^ann:\$2a\$/), mfa: "bob,carol", added: "x" })
   })
 
   it("a method change writes the new type with the page's params, not the server's", async () => {

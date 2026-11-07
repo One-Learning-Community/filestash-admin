@@ -24,6 +24,7 @@
   import { Skeleton } from "$lib/components/ui/skeleton"
   import { methodChangeWarning, methodVariables } from "../storage/method"
   import LocalUsers from "./LocalUsers.svelte"
+  import HtpasswdUsers from "./HtpasswdUsers.svelte"
 
   const NOT_PARAMS = ["type", "banner"]
 
@@ -232,7 +233,7 @@
       {:else if middlewares[method] && paramsByMethod[method]}
         {#key method}
           <!-- the local method's banner links to the server's own user page, which the Users list below replaces -->
-          <SchemaForm schema={middlewares[method]} bind:values={paramsByMethod[method]} hidden={method === "local" ? ["type", "banner"] : ["type"]} />
+          <SchemaForm schema={middlewares[method]} bind:values={paramsByMethod[method]} hidden={method === "local" ? ["type", "banner"] : method === "htpasswd" ? ["type", "users"] : ["type"]} />
         {/key}
         <p class="text-muted-foreground text-sm">
           {t("Available to connection details:")} <code>{variables.join(" ")}</code>
@@ -247,6 +248,11 @@
         {/if}
         <a class="underline" data-link href={href("admin/storage")}>{t("Go to Storage")}</a>
       </p>
+
+      {#if method === "htpasswd" && paramsByMethod.htpasswd}
+        <!-- replaces the "users" text box; it edits the same value, saved with the page -->
+        <HtpasswdUsers bind:value={paramsByMethod.htpasswd.users} unsaved={paramsChanged} />
+      {/if}
 
       {#if method === "local"}
         {#if savedMethod === "local"}
